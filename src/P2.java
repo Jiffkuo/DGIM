@@ -13,22 +13,26 @@ import java.util.List;
  *   4. 'End' to stop the program
  */
 public class P2 {
-
     // main entry
     public static void main(String[] args) {
+        // 0. initialize parameters
+        int bitLen = 16;
+
         // 1. read redirect
-        List<String> inputLists;
+        List<String> inputlists;
         OpenAndValidate openvalid = new OpenAndValidate();
-        inputLists = openvalid.getInputs();
+        inputlists = openvalid.getInputs();
 
         // 2. initialize client socket and receive data
+        // 2.1 data split 16-bit to queue
         /*
         System.out.println("[Debug] DAT file contains:");
         for (String s : inputLists) {
             System.out.println(s);
         }
         */
-        String[] net = inputLists.get(0).split(":");
+        SplitDataStream datastreams = new SplitDataStream(bitLen);
+        String[] net = inputlists.get(0).split(":");
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -58,17 +62,22 @@ public class P2 {
                     while (in.read(buf) > 0) {
                         String s = new String(buf);
                         System.out.println(s);
+                        datastreams.setData(s);
                         buf = new byte[5];
                     }
                 } catch (IOException e) {
-                    System.out.println("[Error] socket cannot adopt " + inputLists.get(0) + "");
+                    System.out.println("[Error] socket cannot adopt " + inputlists.get(0) + "");
                 }
             }
         }).start();
 
-        // 3. split data to 16-bit streams with thread
         // 4. DGIM algorithm
-        // 4.1 check query format
+        DGIM[] dgims = new DGIM[bitLen];
+        // 4.1 create and start 16-bit streams with threads
+        for (int i = 0; i < bitLen; i++) {
+            dgims[i] = new DGIM(datastreams.getData(i), i);
+            dgims[i].start();
+        }
         // 4.2 execute query
         // 5. end and stop program
     }
