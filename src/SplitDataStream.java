@@ -1,6 +1,6 @@
 import java.util.LinkedList;
 import java.util.Queue;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by Tzu-Chi Kuo on 2017/4/24.
@@ -19,19 +19,21 @@ public class SplitDataStream {
         dataStreams = new Queue[size];
         for (int i = 0; i < dataLen; i++) {
             //dataStreams[i] = new SynchronousQueue<>();
-            dataStreams[i] = new LinkedList<>();
+            dataStreams[i] = new ConcurrentLinkedQueue<>();
         }
     }
 
     public synchronized void setData(String in) {
-        int data = Integer.valueOf(in);
+        int data = Integer.valueOf(in.trim());
         int mask = 1;
         for (int i = 0; i < dataLen; i++) {
             boolean success;
-            if ((data & mask) == 0) {
-                success = dataStreams[i].offer(Boolean.FALSE);
-            } else {
-                success = dataStreams[i].offer(Boolean.TRUE);
+            synchronized (dataStreams[i]) {
+                if ((data & mask) == 0) {
+                    success = dataStreams[i].offer(Boolean.FALSE);
+                } else {
+                    success = dataStreams[i].offer(Boolean.TRUE);
+                }
             }
             if (!success) {
                 System.out.println("[Error] cannot offer data to Queue");

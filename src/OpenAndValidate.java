@@ -8,7 +8,7 @@ import java.util.List;
  */
 public class OpenAndValidate {
     private List<String> inputLists;
-    private String prefix = "What is the sum for last";
+    public String prefix = "What is the sum for last";
 
     public OpenAndValidate() {
         // open and store
