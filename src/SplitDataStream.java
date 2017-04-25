@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *  1. Split integer to 16-bit boolean data
  *  2. offer and pull data
  */
+
 public class SplitDataStream {
     //public SynchronousQueue<Boolean>[] dataStream;
     public Queue<Boolean>[] dataStreams;

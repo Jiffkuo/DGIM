@@ -5,7 +5,10 @@ import java.util.Queue;
 
 /**
  * Created by Tzu-Chi Kuo on 2017/4/24.
+ * Purpose:
+ *   main DGIM algorihtm: access 1-bit data stream with thread
  */
+
 public class DGIM implements Runnable {
     private Queue<Boolean> dataStream;
     private Deque<bucket> bucketStream;

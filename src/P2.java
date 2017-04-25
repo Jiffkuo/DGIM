@@ -1,5 +1,6 @@
-import javax.xml.crypto.Data;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.List;
 
@@ -12,6 +13,7 @@ import java.util.List;
  *   3. Base on query and display the answer
  *   4. 'End' to stop the program
  */
+
 public class P2 {
     // main entry
     public static void main(String[] args) {
@@ -39,7 +41,7 @@ public class P2 {
                 try {
                     System.out.println(net[0] + ":" + Integer.valueOf(net[1]));
                     Socket socket = new Socket(net[0], Integer.valueOf(net[1]));
-                    InputStream in = new DataInputStream(socket.getInputStream());
+                    //InputStream in = new DataInputStream(socket.getInputStream());
                     /*
                     int len;
                     len = in.available();
@@ -58,12 +60,20 @@ public class P2 {
                         System.out.println((char)b);
                     }
                     */
+                    /*
                     byte[] buf = new byte[5];
                     while (in.read(buf) > 0) {
                         String s = new String(buf);
                         System.out.println(s);
                         datastreams.setData(s);
                         buf = new byte[5];
+                    }
+                    */
+                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    String s;
+                    while((s = in.readLine()) != null) {
+                        System.out.println(s);
+                        datastreams.setData(s);
                     }
                 } catch (IOException e) {
                     System.out.println("[Error] socket cannot adopt " + inputlists.get(0) + "");
@@ -81,23 +91,37 @@ public class P2 {
             dgims[i] = new DGIM(datastreams.getData(i), i);
             dgims[i].start();
         }
-        // 4.2 execute query with thread
-        for (int i = 1; i < inputlists.size(); i++) {
-            if (inputlists.get(i).equals("end")) {
-                // get command end to leave program
-                System.exit(0);
-            }
-            long query = Long.valueOf(inputlists.get(i));
-            long sum = 0;
-            System.out.println(openvalid.prefix + " " + query + " integers?");
-            for (int j = 0; j < bitLen; j++) {
-                while (dgims[j].getCurrentPos() < query) {
+
+        // 4.2 execute query with thread, can check query by dat or stdin by prompt
+        Thread query = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 1; i < inputlists.size(); i++) {
+                    if (inputlists.get(i).equals("end")) {
+                        // get command end to leave program
+                        System.exit(0);
+                    }
+                    long query = Long.valueOf(inputlists.get(i));
+                    long sum = 0;
+                    System.out.println(openvalid.prefix + " " + query + " integers?");
+                    for (int j = 0; j < bitLen; j++) {
+                        synchronized (dgims) {
+                            while (dgims[j].getCurrentPos() < query) {
+                                try {
+                                    Thread.sleep(1);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                            // sum (j=0, n) of ci * 2^j
+                            //dgims[j].displayBucketStream();
+                            sum += dgims[j].getBucketCnt(query) * Math.pow(2, j);
+                        }
+                    }
+                    System.out.println("The sum of last " + query + " integers is " + sum);
                 }
-                // sum (j=0, n) of ci * 2^j
-                //dgims[j].displayBucketStream();
-                sum += dgims[j].getBucketCnt(query) * Math.pow(2, j);
             }
-            System.out.println("The sum of last " + query + " integers is " + sum);
-        }
+        });
+        query.start();
     }
 }

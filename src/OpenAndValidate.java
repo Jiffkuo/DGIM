@@ -5,7 +5,10 @@ import java.util.List;
 
 /**
  * Created by Tzu-Chi Kuo on 2017/4/23.
+ * Purpose:
+ *    read redirect input argument by prompt
  */
+
 public class OpenAndValidate {
     private List<String> inputLists;
     public String prefix = "What is the sum for last";
@@ -53,11 +56,13 @@ public class OpenAndValidate {
                 inputLists.set(i, query[0]);
             }
         }
+        /* // it's okay to ignore end command
         if (!hasEnd) {
             System.out.print("[Error] missing \"end\" in the dat file.");
             System.out.println(" Please add \"end\" in order to exit P2 program");
             System.exit(0);
         }
+        */
     }
 
     public List<String> getInputs() {
