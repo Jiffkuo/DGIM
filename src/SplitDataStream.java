@@ -1,4 +1,3 @@
-import java.util.LinkedList;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -10,21 +9,26 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 
 public class SplitDataStream {
-    //public SynchronousQueue<Boolean>[] dataStream;
     public Queue<Boolean>[] dataStreams;
     private int dataLen;
+    private int maxLen;
 
+    @SuppressWarnings("unchecked")
     public SplitDataStream(int size) {
         dataLen = size;
-        //dataStream = new SynchronousQueue[size];
         dataStreams = new Queue[size];
+        String max = String.valueOf((int)Math.pow(2, dataLen));
+        maxLen = max.length();
         for (int i = 0; i < dataLen; i++) {
-            //dataStreams[i] = new SynchronousQueue<>();
             dataStreams[i] = new ConcurrentLinkedQueue<>();
         }
     }
 
     public synchronized void setData(String in) {
+        if (in.length() > maxLen) {
+            System.out.println("[Error] input data over 16-bit space");
+            System.exit(0);
+        }
         int data = Integer.valueOf(in.trim());
         int mask = 1;
         for (int i = 0; i < dataLen; i++) {
@@ -43,7 +47,6 @@ public class SplitDataStream {
         }
     }
 
-    //public synchronized SynchronousQueue<Boolean> getData(int bit) {
     public synchronized Queue<Boolean> getData(int bit) {
         return dataStreams[bit];
     }

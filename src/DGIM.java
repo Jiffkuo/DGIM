@@ -1,6 +1,6 @@
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.Queue;
 
 /**
@@ -16,6 +16,8 @@ public class DGIM implements Runnable {
     private Thread thread;
     private int tID;
     private long curPos;
+    private long query;
+    private Object syncLock;
 
     // inner class for bucket
     class bucket {
@@ -44,15 +46,16 @@ public class DGIM implements Runnable {
         dataStream = stream;
         tID = id;
         tName = String.valueOf(tID);
-        bucketStream = new LinkedList<>();
+        bucketStream = new ConcurrentLinkedDeque<>();
         curPos = 1;
+        query = 0;
     }
 
     @Override
     public void run() {
         while (true) {
             synchronized (dataStream) {
-                if (!dataStream.isEmpty()) {
+                if (!dataStream.isEmpty() && (query > 0)) {
                     if (dataStream.poll()) {
                         addBucket(curPos++);
                         //System.out.print(tID + ":1(" + pos + ") ");
@@ -60,27 +63,37 @@ public class DGIM implements Runnable {
                         curPos++;
                         //System.out.print(tID + ":0 ");
                     }
+                    synchronized (syncLock) {
+                        if ((curPos > query) && (query > 0)) {
+                            syncLock.notifyAll();
+                        }
+                    }
                 }
             }
         }
     }
 
     // start thread
-    public void start() {
+    public void start(Object sync) {
         if (thread == null) {
+            syncLock = sync;
             thread = new Thread(this, tName);
             thread.start();
             //System.out.println("[Info] thread-" + tID + " starts!");
         }
     }
 
+    // set target position
+    public void setTarget(long target) {
+        query = target;
+    }
     // get current position
     public long getCurrentPos() {
         return curPos;
     }
 
     // get total count base on k
-    public int getBucketCnt(long k) {
+    public synchronized int getBucketCnt(long k) {
         int result = 0;
         int value = 0;
         if (bucketStream.isEmpty()) {

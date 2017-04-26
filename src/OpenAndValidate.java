@@ -22,6 +22,7 @@ public class OpenAndValidate {
             while((line = bReader.readLine()) != null) {
                 inputLists.add(line);
             }
+            bReader.close();
         } catch (Exception e) {
             System.out.println("[Error]: No redirect input file");
             System.exit(0);
