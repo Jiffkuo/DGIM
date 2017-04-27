@@ -6,7 +6,7 @@ import java.net.Socket;
 /**
  * Created by Tzu-Chi Kuo on 2017/4/23.
  * ID: W1279858
- * Purpose:
+ * PurcurrPose:
  *   1. read redirect file and open a client socket
  *   2. receive input data stream and feed into DGIM algorithm
  *   3. Base on query and display the answer
@@ -18,6 +18,11 @@ public class P2 {
     public static int portNum = 0;
     public static Object lock = new Object();
     public static Object sync = new Object();
+    public static Object forward = new Object();
+    public static Object backward = new Object();
+    public static long queryNum = 0;
+    public static long startPos = 1;
+    public static long currPos = 1; // record number of input data
 
     // main entry
     public static void main(String[] args) {
@@ -35,11 +40,11 @@ public class P2 {
                     String line = "";
                     String prefix = "What is the sum for last";
                     int cmdCnt = 0;
-                    // wait 10 ms in order to invoke all threads
+                    // wait 1 ms in order to invoke all threads
                     try {
-                        Thread.sleep(100);
+                        Thread.sleep(1);
                     } catch (InterruptedException e){
-                        System.out.println("[Error] cannot make thread sleep");
+                        System.out.println("[Error] cannot make stdin thread sleep");
                     }
                     while((line = bReader.readLine()) != null) {
                         if (cmdCnt == 0) {
@@ -75,18 +80,25 @@ public class P2 {
                             } else {
                                 String[] query = line.substring(prefix.length()).trim().split(" ");
                                 if (query != null) {
+                                    queryNum = Long.valueOf(query[0]);
                                     System.out.println(line);
-                                    getResult(dgims, bitLen, Long.valueOf(query[0]));
+                                    startPos = currPos;
+                                    // unitl current query execution is finished
+                                    synchronized (backward) {
+                                        backward.wait();
+                                    }
                                 }
                             }
                         }
                     }
-                    //System.out.println("[Info] End of file");
                     bReader.close();
+                    //System.out.println("[Info] End of file");
                     //System.exit(0);
                 } catch (IOException e) {
-                    System.out.println("[Error]: No redirect input file");
+                    System.out.println("[Error]: No stdin redirect input file");
                     System.exit(0);
+                } catch (InterruptedException e) {
+                    System.out.println("[Error]: Cannot wait backward object");
                 }
             }
         });
@@ -105,10 +117,22 @@ public class P2 {
                         String s;
                         while ((s = in.readLine()) != null) {
                             // 2.1 data split 16-bit to queue
+                            //System.out.println("startPos = " + startPos + " currPos = " + currPos);
                             datastreams.setData(s);
                             System.out.println(s);
+                            // start to execute query if the number of input data is satisfied
+                            if ((startPos >= queryNum && queryNum != 0) || (currPos == queryNum) || (currPos - startPos + 1) == queryNum) {
+                                synchronized (forward) {
+                                    forward.notify();
+                                }
+                                synchronized (backward) {
+                                    backward.wait();
+                                }
+                                startPos = 1;
+                            }
+                            currPos++;
                         }
-                        System.out.println("[Info] no more input data");
+                        //System.out.println("[Info] no more input data");
                     }
                 } catch (IOException e) {
                     System.out.println("[Error] socket cannot adopt " + hostName + ":" + portNum);
@@ -122,51 +146,38 @@ public class P2 {
         receiver.start();
 
         // 3. DGIM algorithm : create and start 16-bit streams with threads
-        synchronized (sync) {
-            for (int i = 0; i < bitLen; i++) {
-                dgims[i] = new DGIM(datastreams.getData(i), i);
-                dgims[i].start(sync);
-            }
-        }
-    }
-
-    public static void getResult(DGIM[] dgims, int bitLen, long query) {
-        long sum = 0;
-        synchronized (dgims) {
-            for (int j = 0; j < bitLen; j++) {
-                while (true) {
-                    if (dgims[j] == null) {
-                        continue;
-                    }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
                     synchronized (sync) {
-                        dgims[j].setTarget(query);
-                        if (dgims[j].getCurrentPos() <= query) {
-                            try {
-                                sync.wait();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                        for (int i = 0; i < bitLen; i++) {
+                            dgims[i] = new DGIM(datastreams.getData(i), i);
+                        }
+                        synchronized (forward) {
+                            while(true) {
+                                forward.wait();
+                                for (int i = 0; i < bitLen; i++) {
+                                    dgims[i].setTarget(queryNum);
+                                    dgims[i].execute(sync);
+                                }
+                                // generate result
+                                long sum = 0;
+                                for (int i = 0; i < bitLen; i++) {
+                                    sum += dgims[i].getBucketCnt(queryNum) * Math.pow(2, i);
+                                    //System.out.println("P2 position = " + currPos + " buckekStream position = " + dgims[i].getCurrentPos());
+                                }
+                                System.out.println("The sum of last " + queryNum + " integers is " + sum);
+                                synchronized (backward) {
+                                    backward.notifyAll();
+                                }
                             }
-                        } else {
-                            break;
                         }
                     }
-                    /*
-                    if (dgims[j].getCurrentPos() <= query) {
-                        try {
-                            TimeUnit.MICROSECONDS.sleep(30);
-                        } catch (InterruptedException e) {
-                            System.out.println("[Error] cannot make thread sleep");
-                        }
-                    } else {
-                        break;
-                    }
-                    */
+                } catch (InterruptedException e) {
+                    System.out.println("[Error] cannot wait for forward object");
                 }
-                // sum (j=0, n) of ci * 2^j
-                //dgims[j].displayBucketStream();
-                sum += dgims[j].getBucketCnt(query) * Math.pow(2, j);
             }
-            System.out.println("The sum of last " + query + " integers is " + sum);
-        }
+        }).start();
     }
 }

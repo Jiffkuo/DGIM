@@ -83,10 +83,34 @@ public class DGIM implements Runnable {
         }
     }
 
+    public void execute(Object sync) {
+        syncLock = sync;
+        while (true) {
+            synchronized (dataStream) {
+                if (!dataStream.isEmpty() && (query > 0)) {
+                    if (dataStream.poll()) {
+                        addBucket(curPos++);
+                        //System.out.print(tID + ":1(" + curPos + ") ");
+                    } else {
+                        curPos++;
+                        //System.out.print(tID + ":0 ");
+                    }
+                    synchronized (syncLock) {
+                        if ((curPos > query) && (query > 0)) {
+                            syncLock.notifyAll();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // set target position
     public void setTarget(long target) {
         query = target;
     }
+
     // get current position
     public long getCurrentPos() {
         return curPos;
@@ -111,11 +135,10 @@ public class DGIM implements Runnable {
                     value = cur.getSize();
                     result += value;
                 } else {
+                    result -= value / 2;
                     break;
                 }
             }
-            // TODO: if pos inside the bucket, how to handle it?
-            //result -= value / 2;
         }
         return result;
     }
@@ -197,5 +220,4 @@ public class DGIM implements Runnable {
             System.out.println();
         }
     }
-
 }
