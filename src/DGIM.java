@@ -6,7 +6,7 @@ import java.util.Queue;
 /**
  * Created by Tzu-Chi Kuo on 2017/4/24.
  * Purpose:
- *   main DGIM algorithm: access 16-bit data stream with thread
+ *   main DGIM algorihtm: access 1-bit data stream with thread
  */
 
 public class DGIM implements Runnable {
@@ -87,7 +87,7 @@ public class DGIM implements Runnable {
         syncLock = sync;
         while (true) {
             synchronized (dataStream) {
-                if (!dataStream.isEmpty() && (query > 0)) {
+                if (!dataStream.isEmpty() && (query >= 0)) {
                     if (dataStream.poll()) {
                         addBucket(curPos++);
                         //System.out.print(tID + ":1(" + curPos + ") ");
@@ -96,7 +96,7 @@ public class DGIM implements Runnable {
                         //System.out.print(tID + ":0 ");
                     }
                     synchronized (syncLock) {
-                        if ((curPos > query) && (query > 0)) {
+                        if ((curPos > query) && (query >= 0)) {
                             syncLock.notifyAll();
                             break;
                         }
@@ -135,11 +135,12 @@ public class DGIM implements Runnable {
                     value = cur.getSize();
                     result += value;
                 } else {
-                    result -= value / 2;
+                    //result -= value / 2;
                     break;
                 }
             }
         }
+        result -= value / 2;
         return result;
     }
 

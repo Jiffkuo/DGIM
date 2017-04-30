@@ -40,7 +40,7 @@ public class P2 {
                     String line = "";
                     String prefix = "What is the sum for last";
                     int cmdCnt = 0;
-                    // wait 1 ms in order to invoke all threads
+                    // wait 100 ms in order to invoke all threads
                     try {
                         Thread.sleep(1);
                     } catch (InterruptedException e){
@@ -81,8 +81,11 @@ public class P2 {
                                 String[] query = line.substring(prefix.length()).trim().split(" ");
                                 if (query != null) {
                                     queryNum = Long.valueOf(query[0]);
-                                    System.out.println(line);
                                     startPos = currPos;
+                                    System.out.println(line);
+                                    if (currPos < queryNum) {
+                                        continue;
+                                    }
                                     // unitl current query execution is finished
                                     synchronized (backward) {
                                         backward.wait();
@@ -117,19 +120,23 @@ public class P2 {
                         String s;
                         while ((s = in.readLine()) != null) {
                             // 2.1 data split 16-bit to queue
-                            //System.out.println("startPos = " + startPos + " currPos = " + currPos);
                             datastreams.setData(s);
-                            System.out.println(s);
                             // start to execute query if the number of input data is satisfied
-                            if ((startPos >= queryNum && queryNum != 0) || (currPos == queryNum) || (currPos - startPos + 1) == queryNum) {
+                            //System.out.println("startPos = " + startPos + " currPos = " + currPos);
+                            //if ((startPos >= queryNum && queryNum != 0) || (currPos == queryNum) || (currPos - startPos + 1) == queryNum) {
+                            if ((currPos >= queryNum)) {
+                                //System.out.println("[In]startPos = " + startPos + " currPos = " + currPos);
                                 synchronized (forward) {
                                     forward.notify();
                                 }
+                            }
+                            if ((currPos >= queryNum)) {
                                 synchronized (backward) {
-                                    backward.wait();
+                                    backward.wait(1);
                                 }
                                 startPos = 1;
                             }
+                            System.out.println(s);
                             currPos++;
                         }
                         //System.out.println("[Info] no more input data");
@@ -158,7 +165,7 @@ public class P2 {
                             while(true) {
                                 forward.wait();
                                 for (int i = 0; i < bitLen; i++) {
-                                    dgims[i].setTarget(queryNum);
+                                    dgims[i].setTarget(currPos - 1);
                                     dgims[i].execute(sync);
                                 }
                                 // generate result
@@ -167,7 +174,10 @@ public class P2 {
                                     sum += dgims[i].getBucketCnt(queryNum) * Math.pow(2, i);
                                     //System.out.println("P2 position = " + currPos + " buckekStream position = " + dgims[i].getCurrentPos());
                                 }
-                                System.out.println("The sum of last " + queryNum + " integers is " + sum);
+                                if (queryNum > 0) {
+                                    System.out.println("The sum of last " + queryNum + " integers is " + sum);
+                                    queryNum = 0;
+                                }
                                 synchronized (backward) {
                                     backward.notifyAll();
                                 }
